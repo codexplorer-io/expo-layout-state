@@ -29,12 +29,18 @@ const areLayoutsEquals = (
     }
 );
 
-export const useLayout = ({ width } = { width: 0 }) => {
+export const useLayout = ({
+    width = 0,
+    height = 0
+} = {
+    width: 0,
+    height: 0
+}) => {
     const [currentLayout, setCurrentLayout] = useState({
         x: 0,
         y: 0,
         width,
-        height: 0
+        height
     });
 
     return {
