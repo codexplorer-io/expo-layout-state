@@ -1,16 +1,24 @@
 # `@codexporer.io/expo-layout-state`
 
-Optimized component layout state management hook and render-prop component for React Native, preventing unnecessary re-renders via deep equality checking (`lodash/isEqual`).
+Optimized layout state management hook and render-prop component for React and React Native, preventing unnecessary re-renders via deep equality checking (`lodash/isEqual`) on `{ x, y, width, height }`.
 
-## Installation & Peer Dependencies
+---
+
+## Peer Dependencies
+
+All peer dependencies are required and must be installed in consuming projects (none are optional):
+- `react`: `*`
+- `lodash`: `*`
+
+---
+
+## Installation
 
 ```bash
 yarn add @codexporer.io/expo-layout-state
 ```
 
-Peer dependencies:
-- `react` (`*`)
-- `lodash` (`*`)
+---
 
 ## Quick Start
 
@@ -25,9 +33,8 @@ export function ResponsiveCanvas() {
   const { currentLayout, setCurrentLayout } = useLayout({ width: 0, height: 0 });
 
   const handleLayout = (event: LayoutChangeEvent) => {
-    const { x, y, width, height } = event.nativeEvent.layout;
-    // Only triggers re-render if dimensions or positions actually changed!
-    setCurrentLayout({ x, y, width, height });
+    // Only triggers re-render if coordinates or dimensions actually changed!
+    setCurrentLayout(event.nativeEvent.layout);
   };
 
   return (
@@ -42,7 +49,7 @@ export function ResponsiveCanvas() {
 
 ```tsx
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, LayoutChangeEvent } from 'react-native';
 import { OnLayout } from '@codexporer.io/expo-layout-state';
 
 export function HeaderWidget() {
@@ -50,7 +57,7 @@ export function HeaderWidget() {
     <OnLayout>
       {({ layout, setLayout }) => (
         <View
-          onLayout={e => setLayout(e.nativeEvent.layout)}
+          onLayout={(e: LayoutChangeEvent) => setLayout(e.nativeEvent.layout)}
           style={{ padding: 16 }}
         >
           <Text>Measured Height: {layout.height}px</Text>
@@ -61,30 +68,41 @@ export function HeaderWidget() {
 }
 ```
 
+---
+
 ## API Reference
 
 ### `useLayout(initialLayout?: LayoutInput): UseLayoutResult`
 
+Custom React hook that manages component layout state, guarding state updates with deep equality comparisons.
+
 #### Parameter (`initialLayout`)
+
 | Property | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `width` | `number` | `0` | Initial container width |
-| `height` | `number` | `0` | Initial container height |
-| `x` | `number` | `0` | Initial x offset |
-| `y` | `number` | `0` | Initial y offset |
+| `width` | `number` | `0` | Initial layout width (initial `x` and `y` default to `0`) |
+| `height` | `number` | `0` | Initial layout height (initial `x` and `y` default to `0`) |
 
 #### Return Value (`UseLayoutResult`)
+
 | Property | Type | Description |
 | :--- | :--- | :--- |
-| `currentLayout` | `LayoutState` | Object containing measured `{ x, y, width, height }` |
-| `setCurrentLayout` | `(layout: LayoutInput) => void` | Setter function that checks `lodash/isEqual` before committing state |
+| `currentLayout` | `LayoutState` | Object containing current `{ x, y, width, height }` |
+| `setCurrentLayout` | `(layout: LayoutInput) => void` | Updates state only if `{ x, y, width, height }` differs from `currentLayout` via `lodash/isEqual` |
+
+---
 
 ### `<OnLayout />`
-Render prop component wrapping layout measurement state.
+
+Render-prop component wrapping layout state.
+
+#### Props
 
 | Prop | Type | Description |
 | :--- | :--- | :--- |
-| `children` | `(props: { layout: LayoutState; setLayout: (l: LayoutInput) => void }) => ReactNode` | Render callback receiving layout and update setter |
+| `children` | `(props: { layout: LayoutState; setLayout: (layout: LayoutInput) => void }) => React.ReactNode` | Render callback receiving measured `layout` and `setLayout` updater |
+
+---
 
 ## Data Types
 
@@ -102,11 +120,32 @@ interface LayoutInput {
   width?: number;
   height?: number;
 }
+
+interface UseLayoutResult {
+  currentLayout: LayoutState;
+  setCurrentLayout: (layout: LayoutInput) => void;
+}
 ```
 
-## Why Use This?
-In React Native, `onLayout` events can fire frequently during scroll, window resize, or keyboard adjustments. Passing measured bounds through standard `useState` often triggers cascading re-renders. `@codexporer.io/expo-layout-state` ensures state only updates when actual coordinate/dimension deltas occur.
+---
+
+## Equality Comparison Logic
+
+Before updating state, `useLayout` and `OnLayout` compare the incoming `LayoutInput` against `currentLayout` using `lodash/isEqual`:
+
+```ts
+const areLayoutsEquals = (layoutA: LayoutInput, layoutB: LayoutInput): boolean =>
+  isEqual(
+    { x: layoutA.x, y: layoutA.y, width: layoutA.width, height: layoutA.height },
+    { x: layoutB.x, y: layoutB.y, width: layoutB.width, height: layoutB.height }
+  );
+```
+
+When changes are detected, missing input properties default to `0` (`x ?? 0`, `y ?? 0`, `width ?? 0`, `height ?? 0`).
+
+---
 
 ## License
 
 MIT
+

@@ -6,7 +6,15 @@ description: Instructions and guidelines for using @codexporer.io/expo-layout-st
 # `@codexporer.io/expo-layout-state` Skill
 
 ## Overview
-`@codexporer.io/expo-layout-state` provides equality-guarded layout measurement state management. It prevents component re-render thrashing caused by repeated `onLayout` calls reporting unchanged coordinates.
+`@codexporer.io/expo-layout-state` provides equality-guarded layout measurement state management. It prevents component re-render thrashing caused by repeated `onLayout` calls reporting unchanged coordinates using `lodash/isEqual`.
+
+---
+
+## Peer Dependencies
+
+All peer dependencies are required and must be installed in consuming projects (none are optional):
+- `react`: `*`
+- `lodash`: `*`
 
 ---
 
@@ -19,13 +27,15 @@ description: Instructions and guidelines for using @codexporer.io/expo-layout-st
 
 ## Usage Example
 
+### 1. Hook Pattern (`useLayout`)
+
 ```tsx
 import React from 'react';
 import { View, Text, LayoutChangeEvent } from 'react-native';
 import { useLayout } from '@codexporer.io/expo-layout-state';
 
 export function CanvasContainer() {
-  const { currentLayout, setCurrentLayout } = useLayout();
+  const { currentLayout, setCurrentLayout } = useLayout({ width: 0, height: 0 });
 
   const handleLayout = (event: LayoutChangeEvent) => {
     setCurrentLayout(event.nativeEvent.layout);
@@ -41,35 +51,58 @@ export function CanvasContainer() {
 }
 ```
 
+### 2. Render-Prop Pattern (`<OnLayout />`)
+
+```tsx
+import React from 'react';
+import { View, Text, LayoutChangeEvent } from 'react-native';
+import { OnLayout } from '@codexporer.io/expo-layout-state';
+
+export function HeaderWidget() {
+  return (
+    <OnLayout>
+      {({ layout, setLayout }) => (
+        <View
+          onLayout={(e: LayoutChangeEvent) => setLayout(e.nativeEvent.layout)}
+          style={{ padding: 16 }}
+        >
+          <Text>Measured Height: {layout.height}px</Text>
+        </View>
+      )}
+    </OnLayout>
+  );
+}
+```
+
 ---
 
 ## API Reference
 
 ### `useLayout(initialLayout?: LayoutInput): UseLayoutResult`
 
-#### Parameter
+#### Parameter (`initialLayout`)
 | Field | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `width` | `number` | `0` | Initial width |
-| `height` | `number` | `0` | Initial height |
-| `x` | `number` | `0` | Initial x coordinate |
-| `y` | `number` | `0` | Initial y coordinate |
+| `width` | `number` | `0` | Initial width (initial `x` and `y` default to `0`) |
+| `height` | `number` | `0` | Initial height (initial `x` and `y` default to `0`) |
 
-#### Returns
+#### Returns (`UseLayoutResult`)
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `currentLayout` | `{ x: number, y: number, width: number, height: number }` | Current dimensions & coordinates |
-| `setCurrentLayout` | `(layout: LayoutInput) => void` | Updates state only if values differ from `currentLayout` |
+| `setCurrentLayout` | `(layout: LayoutInput) => void` | Updates state only if `{ x, y, width, height }` differs from `currentLayout` via `lodash/isEqual` |
 
 ### `<OnLayout />`
 Render-prop component alternative to `useLayout`:
 
 | Prop | Type | Description |
 | :--- | :--- | :--- |
-| `children` | `(props: { layout: LayoutState; setLayout: (l: LayoutInput) => void }) => ReactNode` | Render callback receiving layout and update setter |
+| `children` | `(props: { layout: LayoutState; setLayout: (l: LayoutInput) => void }) => React.ReactNode` | Render callback receiving layout and update setter |
 
 ---
 
 ## Critical Rules & Guidelines
-1. **Initial Zero Check**: Remember that `currentLayout.width` and `height` start at 0 until `onLayout` fires. Always guard division operations (e.g. aspect ratio calculations) with `if (width > 0 && height > 0)`.
-2. **Direct Event Forwarding**: Pass `event.nativeEvent.layout` directly to `setCurrentLayout`.
+1. **Initial Zero Check**: `currentLayout.width` and `height` start at 0 until `onLayout` fires. Always guard division operations (e.g. aspect ratio calculations) with `if (width > 0 && height > 0)`.
+2. **Direct Event Forwarding**: Pass `event.nativeEvent.layout` directly to `setCurrentLayout` or `setLayout`.
+3. **All Peer Dependencies Required**: Consuming projects must install both `react` and `lodash` without marking any as optional.
+
